@@ -1,5 +1,4 @@
-
-import { Race, Rider, ClassTier } from '../types';
+import { Race, Rider } from '../types';
 import { INITIAL_ELO, K_FACTOR } from '../constants';
 
 export const generateRiderId = (name: string): string => {

@@ -365,7 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-right">Peak</span>
               </div>
             }
-            renderRow={(rider, idx) => (
+            renderRow={(rider) => (
               <tr key={rider.id} className={`cursor-pointer transition-all border-b border-slate-900/50 ${activeRiderId === rider.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-800/30'}`} onClick={() => setActiveRiderId(rider.id)}>
                 <td className="p-3 flex flex-col gap-0.5 overflow-hidden">
                   <div className="flex items-center gap-2.5">

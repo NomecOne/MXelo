@@ -1,4 +1,4 @@
-import { Race, RaceResult, ClassTier, Discipline } from '../types';
+import { Race, RaceResult, ClassTier } from '../types';
 
 /**
  * Robust CSV line parser that handles quoted fields and multiple delimiters.
