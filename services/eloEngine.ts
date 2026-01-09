@@ -75,7 +75,6 @@ export const processRace = (race: Race, currentRiders: Map<string, Rider>, provi
       updatedRiders.set(riderId, {
         id: riderId,
         name: res.riderName.trim(),
-        number: res.number,
         elo: startingElo,
         peakElo: startingElo,
         peakYear: raceYear,

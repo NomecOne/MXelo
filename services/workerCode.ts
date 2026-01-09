@@ -1,5 +1,7 @@
 
 
+
+
 export const workerBlobCode = `
   self.onmessage = function(e) {
     const { 
@@ -117,7 +119,6 @@ export const workerBlobCode = `
           riders[id] = {
             id,
             name: res.riderName.trim(),
-            number: res.number,
             elo: startingElo,
             peakElo: startingElo,
             peakYear: raceYear,
@@ -126,6 +127,9 @@ export const workerBlobCode = `
             tier: race.tier,
             tierCounts: { PREMIER: 0, LITES: 0, OPEN: 0 },
             tierWins: { PREMIER: 0, LITES: 0, OPEN: 0 },
+            tierTop3s: { PREMIER: 0, LITES: 0, OPEN: 0 },
+            tierTop5s: { PREMIER: 0, LITES: 0, OPEN: 0 },
+            tierTop10s: { PREMIER: 0, LITES: 0, OPEN: 0 },
             tierEliteRaces: { PREMIER: 0, LITES: 0, OPEN: 0 },
             eliteRaces: 0,
             volatility: 0,
@@ -142,6 +146,11 @@ export const workerBlobCode = `
         if (res.position === 1) {
            if (riders[id].tierWins) riders[id].tierWins[race.tier]++;
         }
+
+        // Update Top X Counts
+        if (res.position <= 3 && riders[id].tierTop3s) riders[id].tierTop3s[race.tier]++;
+        if (res.position <= 5 && riders[id].tierTop5s) riders[id].tierTop5s[race.tier]++;
+        if (res.position <= 10 && riders[id].tierTop10s) riders[id].tierTop10s[race.tier]++;
       });
 
       const N = results.length;

@@ -19,7 +19,6 @@ interface SidebarProps {
   filteredRiders: Rider[];
   activeRiderId: string | null;
   setActiveRiderId: (id: string | null) => void;
-  handleFullWipe: () => void;
   totalRaces: number;
   totalRiders: number;
   logs: string[];
@@ -36,8 +35,8 @@ interface SidebarProps {
   setDecayOffset: (v: number) => void;
   mulliganCap: number;
   setMulliganCap: (v: number) => void;
-  analyticsViewMode?: 'rider' | 'meta';
-  setAnalyticsViewMode?: (mode: 'rider' | 'meta') => void;
+  analyticsViewMode?: 'rider' | 'meta' | 'metrics';
+  setAnalyticsViewMode?: (mode: 'rider' | 'meta' | 'metrics') => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -49,7 +48,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   churnDecayEnabled, setChurnDecayEnabled,
   filteredRiders,
   activeRiderId, setActiveRiderId,
-  handleFullWipe,
   totalRaces,
   totalRiders,
   logs,
@@ -105,9 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [filteredRiders, searchQuery]);
 
   return (
-    <aside className="w-full lg:w-[380px] bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 shadow-2xl z-20 overflow-hidden h-screen relative">
-      <header className="px-5 pt-5 pb-3 border-b border-slate-800 bg-slate-900/40 shrink-0">
-        <div className="flex items-center justify-between mb-3 relative">
+    <aside className="w-full lg:w-[380px] bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 shadow-2xl z-20 overflow-hidden h-[60vh] lg:h-screen relative">
+      <header className="p-3 lg:px-5 lg:pt-5 lg:pb-3 border-b border-slate-800 bg-slate-900/40 shrink-0">
+        <div className="flex items-center justify-between mb-2 lg:mb-3 relative">
           <div className="flex items-center gap-3">
             <div className="relative w-12 h-10 flex items-center justify-center shrink-0 -rotate-3 hover:rotate-0 transition-transform duration-300">
               <svg 
@@ -160,26 +158,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 mb-2">
+        <div className="grid grid-cols-3 gap-1.5 mb-2">
           {DISCIPLINES.map(d => (
             <button 
               key={d.id} 
-              onClick={() => d.id !== 'SX' && setSelDiscipline(d.id)} 
-              disabled={d.id === 'SX'}
+              onClick={() => setSelDiscipline(d.id)} 
               className={`py-1.5 rounded-lg text-[9px] font-black uppercase border border-slate-800 transition-colors 
                 ${selDiscipline === d.id 
                   ? 'bg-orange-600 text-white border-orange-500' 
                   : 'text-slate-500 bg-slate-900/50'
                 }
-                ${d.id === 'SX' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-900'}
+                hover:bg-slate-900
               `}
-              title={d.id === 'SX' ? "Supercross Coming Soon" : ""}
             >
               {d.name}
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-4 gap-1 mb-3">
+        <div className="grid grid-cols-4 gap-1 mb-2 lg:mb-3">
           {['GLOBAL', 'PREMIER', 'LITES', 'OPEN'].map(t => (
             <button 
               key={t} 
@@ -191,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 mb-4">
+        <div className="grid grid-cols-3 gap-1.5 mb-2 lg:mb-4">
           {/* Provisional Toggle */}
           <div className="flex flex-col items-center justify-between p-2 bg-slate-900/60 rounded-xl border border-slate-800/50 gap-2">
             <span className={`text-[7px] font-black uppercase tracking-tight text-center transition-colors ${provisionalInit ? 'text-orange-500' : 'text-slate-400'}`}>Provisional</span>
@@ -352,14 +348,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             getId={(r) => r.id}
             header={
               <div className="p-3 grid grid-cols-[1fr_40px_45px] text-[9px] text-slate-500 font-black uppercase items-center">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <span>Rank & Rider</span>
-                  <button 
-                    onClick={() => setAnalyticsViewMode(analyticsViewMode === 'rider' ? 'meta' : 'rider')}
-                    className={`px-1.5 py-0.5 rounded text-[8px] transition-colors border ${analyticsViewMode === 'meta' ? 'bg-orange-600 text-white border-orange-500 shadow-[0_0_8px_rgba(234,88,12,0.4)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'}`}
-                  >
-                    {analyticsViewMode === 'rider' ? 'ERA STATS' : 'RETURN TO RIDER'}
-                  </button>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => setAnalyticsViewMode(analyticsViewMode === 'meta' ? 'rider' : 'meta')}
+                      className={`px-1.5 py-0.5 rounded text-[8px] transition-colors border ${analyticsViewMode === 'meta' ? 'bg-orange-600 text-white border-orange-500 shadow-[0_0_8px_rgba(234,88,12,0.4)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'}`}
+                    >
+                      ERA
+                    </button>
+                    <button 
+                      onClick={() => setAnalyticsViewMode(analyticsViewMode === 'metrics' ? 'rider' : 'metrics')}
+                      className={`px-1.5 py-0.5 rounded text-[8px] transition-colors border ${analyticsViewMode === 'metrics' ? 'bg-indigo-600 text-white border-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.4)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'}`}
+                    >
+                      METRICS
+                    </button>
+                  </div>
                 </div>
                 <span className="text-center w-full">Year</span>
                 <span className="text-right">Peak</span>
@@ -414,7 +418,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
         ) : (
           <div className="flex flex-col h-full min-h-0 gap-3">
-             <button onClick={handleFullWipe} className="w-full shrink-0 py-2.5 bg-red-950/20 text-red-500 border border-red-900/30 rounded-xl text-[8px] font-black uppercase hover:bg-red-950/40 transition-colors">Wipe Records</button>
              <div className="flex-1 bg-black rounded-xl p-3 border border-slate-800 overflow-y-auto font-mono text-[10px] text-green-500 shadow-inner">
                <div className="flex flex-col-reverse min-h-full justify-end">
                  {logs.map((log, i) => (

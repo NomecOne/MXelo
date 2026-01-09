@@ -1,4 +1,4 @@
-import { Race, RaceResult, ClassTier } from '../types';
+import { Race, RaceResult, ClassTier, Discipline } from '../types';
 
 /**
  * Robust CSV line parser that handles quoted fields and multiple delimiters.
@@ -46,6 +46,7 @@ export const parseRacesCSV = (csvText: string): Race[] => {
     const riderIdx = getIdx('rider');
     const dateIdx = getIdx('date');
     const classIdx = getIdx('class');
+    const typeIdx = getIdx('type'); // New 'type' column
     const trackIdx = getIdx('track');
     const tierIdx = getIdx('tier');
     const overallIdx = getIdx('overall');
@@ -54,6 +55,7 @@ export const parseRacesCSV = (csvText: string): Race[] => {
     const riderName = riderIdx !== -1 ? cols[riderIdx] : "Unknown Rider";
     const date = dateIdx !== -1 ? cols[dateIdx] : "2000-01-01";
     const className = classIdx !== -1 ? cols[classIdx] : "Unknown Class";
+    const typeRaw = typeIdx !== -1 ? cols[typeIdx] : "mx";
     const venue = trackIdx !== -1 ? cols[trackIdx] : "Unknown Track";
     const tierRaw = tierIdx !== -1 ? cols[tierIdx] : "";
     const posStr = overallIdx !== -1 ? cols[overallIdx] : "0";
@@ -72,8 +74,12 @@ export const parseRacesCSV = (csvText: string): Race[] => {
     } else if (tLower.includes('2') || tLower.includes('premiere') || tLower.includes('premier')) {
       tier = 'PREMIER';
     }
-    // If no match is found in the tier column, it defaults to PREMIER.
-    // Inference logic has been removed as requested.
+    
+    // Determine Discipline (MX vs SX)
+    let discipline: Discipline = 'MX';
+    if (typeRaw.toLowerCase() === 'sx') {
+      discipline = 'SX';
+    }
 
     // Unique key for grouping results into a single race event
     const raceKey = `${date}-${className}-${venue}`.replace(/[^a-z0-9]/gi, '-').toLowerCase();
@@ -85,7 +91,7 @@ export const parseRacesCSV = (csvText: string): Race[] => {
         date,
         venue,
         tier,
-        discipline: 'MX', // Defaulting to MX for CSV imports
+        discipline, 
         url: 'imported-csv',
         className: className.toUpperCase(),
         results: []
@@ -95,7 +101,6 @@ export const parseRacesCSV = (csvText: string): Race[] => {
     const result: RaceResult = {
       position: pos,
       riderName: riderName.trim(),
-      number: "", // Numbers aren't always in CSV
       moto1: getIdx('moto 1') !== -1 ? cols[getIdx('moto 1')] : "",
       moto2: getIdx('moto 2') !== -1 ? cols[getIdx('moto 2')] : "",
       machine: machine

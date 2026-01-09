@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Rider, Race, ClassTier, Discipline, GlobalInsight } from './types';
 import { INITIAL_ELO as DEFAULT_INITIAL_ELO, K_FACTOR as DEFAULT_K_FACTOR } from './constants';
-import { getRaces, saveRaces, clearAllDB, bulkAddRaces } from './services/dbService';
+import { getRaces, saveRaces, bulkAddRaces } from './services/dbService';
 import { workerBlobCode } from './services/workerCode';
 
 // Components
@@ -14,13 +14,12 @@ const workerUrl = URL.createObjectURL(workerBlob);
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'analytics' | 'database'>('analytics');
-  const [analyticsViewMode, setAnalyticsViewMode] = useState<'rider' | 'meta'>('rider');
+  const [analyticsViewMode, setAnalyticsViewMode] = useState<'rider' | 'meta' | 'metrics'>('rider');
   const [riders, setRiders] = useState<Map<string, Rider>>(new Map());
   const [races, setRaces] = useState<Race[]>([]);
   const [globalInsights, setGlobalInsights] = useState<GlobalInsight[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isHydrating, setIsHydrating] = useState(false);
-  const [isWiping, setIsWiping] = useState(false);
   const [activeRiderId, setActiveRiderId] = useState<string | null>(null);
   
   const [selDiscipline, setSelDiscipline] = useState<Discipline>('MX');
@@ -129,6 +128,10 @@ const App: React.FC = () => {
     const currentVer = calculationVersion.current;
 
     const racesToProcess = races.filter(race => {
+      // Filter by Discipline (include all if 'ALL' is selected)
+      if (selDiscipline !== 'ALL' && race.discipline !== selDiscipline) return false;
+      
+      // Filter by Tier
       if (selTier === 'GLOBAL') return true;
       return race.tier === selTier;
     });
@@ -148,7 +151,7 @@ const App: React.FC = () => {
     });
     
     saveRaces(races);
-  }, [races, selTier, provisionalInit, mulliganEnabled, mulliganCap, churnDecayEnabled, standardK, provisionalK, provisionalRaces, initialElo, decayOffset]);
+  }, [races, selDiscipline, selTier, provisionalInit, mulliganEnabled, mulliganCap, churnDecayEnabled, standardK, provisionalK, provisionalRaces, initialElo, decayOffset]);
 
   const filteredRiders = useMemo(() => {
     return Array.from(riders.values()).sort((a: Rider, b: Rider) => b.peakElo - a.peakElo);
@@ -219,36 +222,14 @@ const App: React.FC = () => {
     addLog("Import committed to database.");
   };
 
-  const handleFullWipe = async () => {
-    if (window.confirm('Wipe all local data?')) {
-      addLog("Wiping local database...");
-      setIsWiping(true);
-      setIsCalculating(false);
-      calculationVersion.current++;
-      try {
-        await clearAllDB();
-        setRaces([]);
-        setRiders(new Map());
-        setGlobalInsights([]);
-        setActiveRiderId(null);
-        addLog("Database successfully wiped.");
-      } catch (err) {
-        console.error(err);
-        addLog("Error during wipe operation.");
-      } finally {
-        setIsWiping(false);
-      }
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 flex flex-col lg:flex-row overflow-hidden relative">
-      {(isCalculating || isHydrating || isWiping) && (
-        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+    <div className="min-h-screen w-full lg:h-screen lg:w-screen lg:fixed lg:inset-0 bg-[#020617] text-slate-100 flex flex-col lg:flex-row lg:overflow-hidden relative">
+      {(isCalculating || isHydrating) && (
+        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center fixed">
           <div className="text-center p-12 bg-slate-900 border border-slate-800 rounded-[40px] shadow-3xl">
             <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
             <p className="text-xl font-black uppercase italic tracking-widest text-orange-500">
-              {isWiping ? 'Wiping Local Database...' : isHydrating ? 'Hydrating Database...' : 'Processing Power Ratings...'}
+              {isHydrating ? 'Hydrating Database...' : 'Processing Power Ratings...'}
             </p>
           </div>
         </div>
@@ -263,7 +244,6 @@ const App: React.FC = () => {
         churnDecayEnabled={churnDecayEnabled} setChurnDecayEnabled={setChurnDecayEnabled}
         filteredRiders={filteredRiders}
         activeRiderId={activeRiderId} setActiveRiderId={setActiveRiderId}
-        handleFullWipe={handleFullWipe}
         totalRaces={races.length}
         totalRiders={riders.size}
         logs={consoleLogs}
@@ -277,7 +257,7 @@ const App: React.FC = () => {
         setAnalyticsViewMode={setAnalyticsViewMode}
       />
 
-      <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[#020617] flex flex-col h-screen">
+      <main className="w-full flex-1 p-4 lg:p-6 bg-[#020617] flex flex-col min-h-0 lg:overflow-y-auto">
         {activeTab === 'analytics' && (
           <AnalyticsView 
             activeRiderData={activeRiderData} 

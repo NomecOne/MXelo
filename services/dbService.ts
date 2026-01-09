@@ -1,4 +1,3 @@
-
 import { Race } from '../types';
 
 const DB_NAME = 'MXELODB';
@@ -49,28 +48,4 @@ export const getRaces = async (): Promise<Race[]> => {
   const store = tx.objectStore(STORES.RACES);
   const request = store.getAll();
   return new Promise((resolve) => request.onsuccess = () => resolve(request.result));
-};
-
-export const clearAllDB = async () => {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction([STORES.RACES], 'readwrite');
-      const racesStore = tx.objectStore(STORES.RACES);
-      
-      racesStore.clear();
-
-      tx.oncomplete = () => {
-        resolve(true);
-      };
-      tx.onabort = () => {
-        reject(new Error("Transaction aborted"));
-      };
-      tx.onerror = () => {
-        reject(tx.error);
-      };
-    } catch (e) {
-      reject(e);
-    }
-  });
 };

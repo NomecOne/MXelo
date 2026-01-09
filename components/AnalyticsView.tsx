@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Rider, GlobalInsight, ClassTier } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -8,10 +8,13 @@ interface AnalyticsViewProps {
   globalInsights: GlobalInsight[];
   selectedTier: ClassTier | 'GLOBAL';
   allRiders: Rider[];
-  viewMode: 'rider' | 'meta';
+  viewMode: 'rider' | 'meta' | 'metrics';
 }
 
+type SortField = 'name' | 'wins' | 'raceCount' | 'winPerc' | 'elite' | 'volatility' | 'top3' | 'top3Perc' | 'top5' | 'top5Perc' | 'top10' | 'top10Perc';
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, rank, globalInsights, selectedTier, allRiders, viewMode }) => {
+  const [sortConfig, setSortConfig] = useState<{ key: SortField; direction: 'asc' | 'desc' }>({ key: 'wins', direction: 'desc' });
 
   const getRankLabel = (tier: string) => {
     switch (tier) {
@@ -27,12 +30,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
         const wins = (r.tierWins?.PREMIER || 0) + (r.tierWins?.LITES || 0) + (r.tierWins?.OPEN || 0);
         const races = (r.tierCounts?.PREMIER || 0) + (r.tierCounts?.LITES || 0) + (r.tierCounts?.OPEN || 0);
         const elite = (r.tierEliteRaces?.PREMIER || 0) + (r.tierEliteRaces?.LITES || 0) + (r.tierEliteRaces?.OPEN || 0);
-        return { wins, races, elite };
+        const top3 = (r.tierTop3s?.PREMIER || 0) + (r.tierTop3s?.LITES || 0) + (r.tierTop3s?.OPEN || 0);
+        const top5 = (r.tierTop5s?.PREMIER || 0) + (r.tierTop5s?.LITES || 0) + (r.tierTop5s?.OPEN || 0);
+        const top10 = (r.tierTop10s?.PREMIER || 0) + (r.tierTop10s?.LITES || 0) + (r.tierTop10s?.OPEN || 0);
+        return { wins, races, elite, top3, top5, top10 };
      }
      return {
         wins: r.tierWins?.[t] || 0,
         races: r.tierCounts?.[t] || 0,
-        elite: r.tierEliteRaces?.[t] || 0
+        elite: r.tierEliteRaces?.[t] || 0,
+        top3: r.tierTop3s?.[t] || 0,
+        top5: r.tierTop5s?.[t] || 0,
+        top10: r.tierTop10s?.[t] || 0,
      };
   };
 
@@ -48,7 +57,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
         return { 
            id: r.id, 
            ...s,
-           winPerc: s.races > 0 ? (s.wins / s.races) * 100 : 0
+           winPerc: s.races > 0 ? (s.wins / s.races) * 100 : 0,
+           volatility: r.volatility || 0
         };
     });
     
@@ -70,6 +80,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
     ridersWithStats.sort((a, b) => b.elite - a.elite);
     const eliteRank = ridersWithStats.findIndex(r => r.id === activeRiderData.id) + 1;
 
+    // Volatility Rank (Lowest #1)
+    // Filter out 0 volatility (insufficient data) to make ranking meaningful
+    const validVolRiders = ridersWithStats.filter(r => r.volatility > 0);
+    validVolRiders.sort((a, b) => a.volatility - b.volatility);
+    
+    let volatilityRank = null;
+    const myVol = activeRiderData.volatility || 0;
+    if (myVol > 0) {
+       const idx = validVolRiders.findIndex(r => r.id === activeRiderData.id);
+       if (idx !== -1) volatilityRank = idx + 1;
+    }
+
     return {
         wins: myStats.wins,
         winRank,
@@ -77,21 +99,164 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
         winPercRank,
         elite: myStats.elite,
         eliteRank,
-        volatility: activeRiderData.volatility || 0
+        volatility: myVol,
+        volatilityRank
     };
   }, [activeRiderData, allRiders, selectedTier]);
 
+  const metricsData = useMemo(() => {
+      if (viewMode !== 'metrics') return [];
+      
+      const data = allRiders.map(r => {
+          const s = getTierStats(r, selectedTier);
+          return {
+              id: r.id,
+              name: r.name,
+              wins: s.wins,
+              raceCount: s.races,
+              winPerc: s.races > 0 ? (s.wins / s.races) * 100 : 0,
+              top3: s.top3,
+              top3Perc: s.races > 0 ? (s.top3 / s.races) * 100 : 0,
+              top5: s.top5,
+              top5Perc: s.races > 0 ? (s.top5 / s.races) * 100 : 0,
+              top10: s.top10,
+              top10Perc: s.races > 0 ? (s.top10 / s.races) * 100 : 0,
+              elite: s.elite,
+              volatility: r.volatility || 0
+          };
+      });
+
+      return data.sort((a, b) => {
+          if (sortConfig.key === 'volatility') {
+             // For Volatility table view:
+             // 1. Must have >= 5 races to be ranked at top.
+             // 2. Lowest volatility is #1 (better).
+             const validA = a.raceCount >= 5 && a.volatility > 0;
+             const validB = b.raceCount >= 5 && b.volatility > 0;
+
+             if (validA && !validB) return -1; // Valid records come first
+             if (!validA && validB) return 1;
+             if (!validA && !validB) return 0; // Both invalid, treat equal
+
+             // Both valid, standard numeric sort
+             // ASC = Smallest (Best) first
+             if (a.volatility < b.volatility) return sortConfig.direction === 'asc' ? -1 : 1;
+             if (a.volatility > b.volatility) return sortConfig.direction === 'asc' ? 1 : -1;
+             return 0;
+          }
+
+          const valA = a[sortConfig.key];
+          const valB = b[sortConfig.key];
+          
+          if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+      });
+  }, [allRiders, selectedTier, sortConfig, viewMode]);
+
+  const handleSort = (key: SortField) => {
+      let nextDirection: 'asc' | 'desc' = 'desc';
+      
+      // Default to ASC for Volatility (Lower is better) and Name
+      if (key === 'volatility' || key === 'name') nextDirection = 'asc';
+
+      // If clicking same header, toggle
+      if (sortConfig.key === key) {
+          nextDirection = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+      }
+
+      setSortConfig({ key, direction: nextDirection });
+  };
+
+  if (viewMode === 'metrics') {
+      return (
+        <section className="animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1 flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
+            <div className="flex justify-between items-center shrink-0 mb-6">
+              <h2 className="text-3xl font-black italic uppercase italic tracking-tighter text-white">Metrics Database ({selectedTier})</h2>
+            </div>
+            
+            <div className="flex-1 min-h-0 bg-slate-950 rounded-[40px] border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
+                <div className="overflow-auto pr-2">
+                    <table className="w-full text-left border-collapse min-w-max">
+                        <thead className="bg-slate-900 sticky top-0 z-10 shadow-lg">
+                            <tr>
+                                <th className="p-4 text-[10px] font-black uppercase text-slate-500 w-12 text-center sticky left-0 bg-slate-900 z-20">#</th>
+                                <th onClick={() => handleSort('name')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors sticky left-12 bg-slate-900 z-20">
+                                    Rider {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('raceCount')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Races {sortConfig.key === 'raceCount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('wins')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Wins {sortConfig.key === 'wins' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('winPerc')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Win % {sortConfig.key === 'winPerc' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top3')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 3 {sortConfig.key === 'top3' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top3Perc')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 3 % {sortConfig.key === 'top3Perc' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top5')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 5 {sortConfig.key === 'top5' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top5Perc')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 5 % {sortConfig.key === 'top5Perc' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top10')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 10 {sortConfig.key === 'top10' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('top10Perc')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Top 10 % {sortConfig.key === 'top10Perc' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('elite')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Elite Elo Races {sortConfig.key === 'elite' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('volatility')} className="p-4 text-[10px] font-black uppercase text-slate-500 cursor-pointer hover:text-white transition-colors text-right whitespace-nowrap">
+                                    Volatility* {sortConfig.key === 'volatility' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-900/50">
+                            {metricsData.map((row, idx) => (
+                                <tr key={row.id} className="hover:bg-slate-900/30 transition-colors group">
+                                    <td className="p-4 text-[11px] font-mono text-slate-600 font-bold text-center group-hover:text-slate-400 sticky left-0 bg-slate-950 group-hover:bg-slate-900/30 transition-colors z-10">{idx + 1}</td>
+                                    <td className="p-4 text-[11px] font-bold text-white uppercase sticky left-12 bg-slate-950 group-hover:bg-slate-900/30 transition-colors z-10">{row.name}</td>
+                                    <td className="p-4 text-[11px] font-mono text-slate-400 text-right">{row.raceCount}</td>
+                                    <td className="p-4 text-[11px] font-mono text-emerald-500 text-right">{row.wins}</td>
+                                    <td className="p-4 text-[11px] font-mono text-slate-300 text-right">{row.winPerc.toFixed(1)}%</td>
+                                    <td className="p-4 text-[11px] font-mono text-white text-right">{row.top3}</td>
+                                    <td className="p-4 text-[11px] font-mono text-slate-400 text-right">{row.top3Perc.toFixed(1)}%</td>
+                                    <td className="p-4 text-[11px] font-mono text-white text-right">{row.top5}</td>
+                                    <td className="p-4 text-[11px] font-mono text-slate-400 text-right">{row.top5Perc.toFixed(1)}%</td>
+                                    <td className="p-4 text-[11px] font-mono text-white text-right">{row.top10}</td>
+                                    <td className="p-4 text-[11px] font-mono text-slate-400 text-right">{row.top10Perc.toFixed(1)}%</td>
+                                    <td className="p-4 text-[11px] font-mono text-indigo-400 text-right">{row.elite}</td>
+                                    <td className={`p-4 text-[11px] font-mono text-right ${row.raceCount < 5 ? 'text-slate-700' : 'text-orange-500'}`}>
+                                        {row.volatility.toFixed(1)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+      );
+  }
 
   if (viewMode === 'meta') {
     return (
-      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-0 flex-1 flex flex-col">
+      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1 flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
         <div className="flex justify-between items-center shrink-0">
           <h2 className="text-3xl font-black italic uppercase italic tracking-tighter text-white">Strength of Eras</h2>
         </div>
 
-        <div className="flex flex-col gap-6 flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-hide pb-4">
+        <div className="flex flex-col gap-6 flex-1 min-h-0 overflow-visible lg:overflow-y-auto pr-2 scrollbar-hide pb-4">
           {/* Era Strength Index */}
-          <div className="bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl h-[400px] flex flex-col shrink-0">
+          <div className="bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl h-[250px] lg:h-[400px] flex flex-col shrink-0">
             <h3 className="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-widest shrink-0">Era Strength Index (Avg Top 10 ELO)</h3>
             <div className="flex-1 min-h-0 relative w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -121,7 +286,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
           </div>
 
           {/* Dominance Gap Chart */}
-          <div className="bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl h-[400px] flex flex-col shrink-0">
+          <div className="bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl h-[250px] lg:h-[400px] flex flex-col shrink-0">
             <h3 className="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-widest shrink-0">Dominance Gap (#1 vs #2 Points)</h3>
             <div className="flex-1 min-h-0 relative w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -198,7 +363,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
   const topNemesis = sortedNemesis.slice(-3).reverse();
 
   return (
-    <section className="animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1 flex flex-col h-full overflow-hidden">
+    <section className="animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1 flex flex-col h-auto lg:h-full overflow-visible lg:overflow-hidden">
       {/* Header Area - Shrink 0 */}
       <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-4 shrink-0 mb-6">
         <div className="flex-1 min-w-0">
@@ -229,9 +394,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-4 scrollbar-hide space-y-4">
+      <div className="flex-1 min-h-0 overflow-visible lg:overflow-y-auto pr-1 pb-4 scrollbar-hide space-y-4">
         {/* Main Chart - Full Width */}
-        <div className="bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col h-[400px] shrink-0">
+        <div className="bg-slate-950 p-4 lg:p-6 rounded-[40px] border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col h-[250px] lg:h-[400px] shrink-0">
           <div className="flex justify-between items-center mb-4 shrink-0">
              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Performance Curve</h3>
           </div>
@@ -263,7 +428,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
         {/* Stats Grid - Moved Below Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Advanced Stats Card */}
-          <div className="lg:col-span-1 bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl shrink-0 min-h-[250px] flex flex-col">
+          <div className="lg:col-span-1 bg-slate-950 p-4 lg:p-6 rounded-[40px] border border-slate-800 shadow-2xl shrink-0 min-h-[250px] flex flex-col">
              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Metric Profile ({selectedTier})</h3>
              {stats ? (
                <div className="grid grid-cols-2 gap-x-4 gap-y-6 flex-1">
@@ -287,7 +452,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
 
                  {/* Elite Longevity */}
                  <div>
-                   <p className="text-[9px] font-black text-slate-500 uppercase mb-0.5">Elite Races</p>
+                   <p className="text-[9px] font-black text-slate-500 uppercase mb-0.5">Elite Elo Races</p>
                    <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-black text-white">{stats.elite}</span>
                       <span className="text-[10px] mono text-emerald-500 font-bold">#{stats.eliteRank}</span>
@@ -297,7 +462,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
                  {/* Volatility */}
                  <div>
                    <p className="text-[9px] font-black text-slate-500 uppercase mb-0.5">Volatility</p>
-                   <p className="text-3xl font-black text-orange-500">{stats.volatility.toFixed(1)}</p>
+                   <div className="flex items-baseline gap-2">
+                     <p className="text-3xl font-black text-orange-500">{stats.volatility.toFixed(1)}</p>
+                     {stats.volatilityRank && (
+                       <span className="text-[10px] mono text-emerald-500 font-bold">#{stats.volatilityRank}</span>
+                     )}
+                   </div>
                  </div>
                </div>
              ) : (
@@ -306,7 +476,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ activeRiderData, r
           </div>
 
           {/* Nemesis Stats */}
-          <div className="lg:col-span-2 bg-slate-950 p-6 rounded-[40px] border border-slate-800 shadow-2xl flex flex-col h-[250px]">
+          <div className="lg:col-span-2 bg-slate-950 p-4 lg:p-6 rounded-[40px] border border-slate-800 shadow-2xl flex flex-col h-[250px]">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 shrink-0">Nemesis Matrix</h3>
             
             <div className="grid grid-cols-2 gap-8 h-full min-h-0">

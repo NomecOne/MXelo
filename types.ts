@@ -1,11 +1,10 @@
 
 export type ClassTier = 'PREMIER' | 'LITES' | 'OPEN';
-export type Discipline = 'MX' | 'SX';
+export type Discipline = 'MX' | 'SX' | 'ALL';
 
 export interface Rider {
   id: string;
   name: string;
-  number: string;
   elo: number;
   peakElo: number;
   peakYear?: string;
@@ -18,6 +17,21 @@ export interface Rider {
     OPEN: number;
   };
   tierWins?: {
+    PREMIER: number;
+    LITES: number;
+    OPEN: number;
+  };
+  tierTop3s?: {
+    PREMIER: number;
+    LITES: number;
+    OPEN: number;
+  };
+  tierTop5s?: {
+    PREMIER: number;
+    LITES: number;
+    OPEN: number;
+  };
+  tierTop10s?: {
     PREMIER: number;
     LITES: number;
     OPEN: number;
@@ -51,7 +65,6 @@ export interface GlobalInsight {
 export interface RaceResult {
   position: number;
   riderName: string;
-  number: string;
   hometown?: string;
   moto1?: string;
   moto2?: string;
