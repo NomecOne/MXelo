@@ -347,8 +347,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             activeId={activeRiderId}
             getId={(r) => r.id}
             header={
-              <div className="p-3 grid grid-cols-[1fr_40px_45px] text-[9px] text-slate-500 font-black uppercase items-center">
-                <div className="flex items-center gap-2">
+              <div className="grid grid-cols-[1fr_60px_55px] text-[9px] text-slate-500 font-black uppercase items-center">
+                <div className="flex items-center gap-2 pl-3 py-3">
                   <span>Rank & Rider</span>
                   <div className="flex gap-1">
                     <button 
@@ -365,52 +365,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   </div>
                 </div>
-                <span className="text-center w-full">Year</span>
-                <span className="text-right">Peak</span>
+                <span className="text-center w-full py-3">Year</span>
+                <span className="text-right pr-3 py-3">Peak</span>
               </div>
             }
             renderRow={(rider) => (
-              <tr key={rider.id} className={`cursor-pointer transition-all border-b border-slate-900/50 ${activeRiderId === rider.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-800/30'}`} onClick={() => setActiveRiderId(rider.id)}>
-                <td className="p-3 flex flex-col gap-0.5 overflow-hidden">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`mono font-black italic text-[11px] min-w-[20px] ${activeRiderId === rider.id ? 'text-white' : 'text-orange-500/50'}`}>{filteredRiders.findIndex(r => r.id === rider.id) + 1}</span>
-                    <div className="font-black text-[11px] uppercase truncate">{rider.name}</div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-1 pl-[25px] mt-0.5">
-                    <div className="min-w-0">
-                      {rider.tierCounts?.PREMIER ? (
-                        <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-orange-500'}`}>
-                          <span className="opacity-70">[{rider.tierCounts.PREMIER}]</span> Pr
-                        </span>
-                      ) : (
-                        <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Pr</span>
-                      )}
+              <tr key={rider.id} className={`flex w-full cursor-pointer transition-all border-b border-slate-900/50 items-center ${activeRiderId === rider.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-800/30'}`} onClick={() => setActiveRiderId(rider.id)}>
+                <td className="flex-1 min-w-0 p-3 align-top">
+                  <div className="flex flex-col gap-0.5 overflow-hidden">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`mono font-black italic text-[11px] min-w-[20px] ${activeRiderId === rider.id ? 'text-white' : 'text-orange-500/50'}`}>{filteredRiders.findIndex(r => r.id === rider.id) + 1}</span>
+                      <div className="font-black text-[11px] uppercase truncate">{rider.name}</div>
                     </div>
-                    <div className="min-w-0">
-                      {rider.tierCounts?.LITES ? (
-                        <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-indigo-400'}`}>
-                          <span className="opacity-70">[{rider.tierCounts.LITES}]</span> Lt
-                        </span>
-                      ) : (
-                        <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Lt</span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      {rider.tierCounts?.OPEN ? (
-                        <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-emerald-400'}`}>
-                          <span className="opacity-70">[{rider.tierCounts.OPEN}]</span> Op
-                        </span>
-                      ) : (
-                        <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Op</span>
-                      )}
+                    
+                    <div className="grid grid-cols-3 gap-1 pl-[25px] mt-0.5">
+                      <div className="min-w-0">
+                        {rider.tierCounts?.PREMIER ? (
+                          <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-orange-500'}`}>
+                            <span className="opacity-70">[{rider.tierCounts.PREMIER}]</span> Pr
+                          </span>
+                        ) : (
+                          <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Pr</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        {rider.tierCounts?.LITES ? (
+                          <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-indigo-400'}`}>
+                            <span className="opacity-70">[{rider.tierCounts.LITES}]</span> Lt
+                          </span>
+                        ) : (
+                          <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Lt</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        {rider.tierCounts?.OPEN ? (
+                          <span className={`text-[7px] font-black uppercase flex items-center gap-0.5 truncate ${activeRiderId === rider.id ? 'text-white' : 'text-emerald-400'}`}>
+                            <span className="opacity-70">[{rider.tierCounts.OPEN}]</span> Op
+                          </span>
+                        ) : (
+                          <span className="text-[7px] font-black uppercase text-slate-800 select-none">[-] Op</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td className="p-3 text-center text-[10px] mono font-black align-top pt-[14px]">
+                <td className="w-[60px] shrink-0 p-3 text-center text-[10px] mono font-black align-top pt-[14px]">
                   <div className={activeRiderId === rider.id ? 'text-white' : 'text-slate-600'}>{rider.peakYear || '----'}</div>
                 </td>
-                <td className="p-3 font-black mono text-right text-[11px] align-top pt-[14px]">
+                <td className="w-[55px] shrink-0 p-3 font-black mono text-right text-[11px] align-top pt-[14px]">
                    <div className={activeRiderId === rider.id ? 'text-white' : 'text-slate-300'}>{rider.peakElo}</div>
                 </td>
               </tr>

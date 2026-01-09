@@ -107,7 +107,7 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
                 <th className="w-[40px] shrink-0 text-center">M2</th>
               </tr>
             }
-            renderRow={(res, i) => (
+            renderRow={(res) => (
               <tr key={res.id} className="w-full flex px-4 py-0 border-b border-slate-900/30 items-center hover:bg-slate-900/20 transition-colors gap-2 h-full text-[10px]">
                 <td className="w-[80px] shrink-0 opacity-70 font-mono">{res.date}</td>
                 <td className="w-[60px] shrink-0 truncate font-bold text-slate-400">{res.className}</td>

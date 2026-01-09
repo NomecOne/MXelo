@@ -176,8 +176,11 @@ export const exportRidersToCSV = (riders: Rider[], settings: Record<string, any>
   ];
   lines.push(cols.join(","));
 
+  // Sort by Current ELO Descending for the rank
+  const sortedRiders = [...riders].sort((a, b) => b.elo - a.elo);
+
   // 3. Data Rows
-  riders.forEach((r, i) => {
+  sortedRiders.forEach((r, i) => {
     const totalRaces = (r.tierCounts?.PREMIER || 0) + (r.tierCounts?.LITES || 0) + (r.tierCounts?.OPEN || 0);
     const totalWins = (r.tierWins?.PREMIER || 0) + (r.tierWins?.LITES || 0) + (r.tierWins?.OPEN || 0);
     const winPerc = totalRaces > 0 ? (totalWins / totalRaces * 100).toFixed(1) : "0.0";
