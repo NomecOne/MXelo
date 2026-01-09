@@ -1,8 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import { Race } from '../types';
 import { VirtualTable } from './VirtualTable';
-import { parseRacesCSV, exportRacesToJSON, downloadBlob } from '../services/dataService';
+import { parseRacesCSV, exportRacesToJSON, exportRacesToCSV, downloadBlob } from '../services/dataService';
 
 interface FlatResult {
   year: string;
@@ -62,6 +61,13 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
     downloadBlob(json, filename, 'application/json');
   };
 
+  const handleExportCSV = () => {
+    const csv = exportRacesToCSV(allRaces);
+    const filename = `mxelo_export_${new Date().toISOString().split('T')[0]}.csv`;
+    onLog(`Exporting CSV database snapshot to ${filename}...`);
+    downloadBlob(csv, filename, 'text/csv');
+  };
+
   return (
     <div className="flex-1 flex flex-col gap-6 min-h-0">
       <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 w-fit shrink-0">
@@ -107,24 +113,30 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
               <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">Import CSV files or sync your master database.json file.</p>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-10 py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl text-[11px] font-black uppercase transition-all shadow-xl shadow-orange-600/10"
+                className="px-6 py-5 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all shadow-xl shadow-orange-600/10"
               >
-                Upload CSV
+                Upload Data CSV
               </button>
               <button 
                 onClick={onHydrate}
-                className="px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[11px] font-black uppercase transition-all shadow-xl shadow-indigo-600/10"
+                className="px-6 py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all shadow-xl shadow-indigo-600/10"
               >
-                Sync Master JSON
+                Load Sample Data
+              </button>
+              <button 
+                onClick={handleExportCSV}
+                className="px-6 py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all border border-slate-700"
+              >
+                Export Data CSV
               </button>
               <button 
                 onClick={handleExportJSON}
-                className="px-10 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[11px] font-black uppercase transition-all"
+                className="px-6 py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all border border-slate-700"
               >
-                Snapshot JSON
+                Export Data JSON
               </button>
             </div>
             

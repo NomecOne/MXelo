@@ -13,7 +13,7 @@ const workerBlob = new Blob([workerBlobCode], { type: 'application/javascript' }
 const workerUrl = URL.createObjectURL(workerBlob);
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'database'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'database'>('database');
   const [analyticsViewMode, setAnalyticsViewMode] = useState<'rider' | 'meta' | 'metrics'>('rider');
   const [riders, setRiders] = useState<Map<string, Rider>>(new Map());
   const [races, setRaces] = useState<Race[]>([]);
@@ -31,9 +31,9 @@ const App: React.FC = () => {
   const [churnDecayEnabled, setChurnDecayEnabled] = useState(false);
   
   // Advanced Tweakables
-  const [standardK, setStandardK] = useState(DEFAULT_K_FACTOR); // Default 32
+  const [standardK, setStandardK] = useState(DEFAULT_K_FACTOR); // Default 64
   const [provisionalK, setProvisionalK] = useState(80);
-  const [provisionalRaces, setProvisionalRaces] = useState(15);
+  const [provisionalRaces, setProvisionalRaces] = useState(10);
   const [initialElo, setInitialElo] = useState(DEFAULT_INITIAL_ELO);
   const [decayOffset, setDecayOffset] = useState(0); // -1.0 to 1.0
   const [mulliganCap, setMulliganCap] = useState(3);

@@ -127,6 +127,34 @@ export const exportRacesToJSON = (races: Race[]): string => {
 };
 
 /**
+ * Exports current data to a CSV string compatible with the import format.
+ */
+export const exportRacesToCSV = (races: Race[]): string => {
+  const headers = ['Date', 'Class', 'Track', 'Type', 'Tier', 'Overall', 'Rider', 'Machine', 'Moto 1', 'Moto 2'];
+  const lines = [headers.join(',')];
+
+  const esc = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+
+  for (const race of races) {
+    for (const res of race.results) {
+      lines.push([
+        esc(race.date),
+        esc(race.className),
+        esc(race.venue),
+        esc(race.discipline),
+        esc(race.tier),
+        res.position,
+        esc(res.riderName),
+        esc(res.machine || ''),
+        esc(res.moto1 || ''),
+        esc(res.moto2 || '')
+      ].join(','));
+    }
+  }
+  return lines.join('\n');
+};
+
+/**
  * Triggers a browser download of the data.
  */
 export const downloadBlob = (content: string, filename: string, contentType: string) => {
