@@ -7,7 +7,7 @@ import { workerBlobCode } from './services/workerCode';
 // Components
 import { Sidebar } from './components/Sidebar';
 import { AnalyticsView } from './components/AnalyticsView';
-import { DatabaseView } from './components/DatabaseView';
+import { DatabaseView, FlatResult } from './components/DatabaseView';
 
 const workerBlob = new Blob([workerBlobCode], { type: 'application/javascript' });
 const workerUrl = URL.createObjectURL(workerBlob);
@@ -186,16 +186,20 @@ const App: React.FC = () => {
     return idx !== -1 ? idx + 1 : null;
   }, [filteredRiders, activeRiderId]);
 
-  const flatResults = useMemo(() => {
-    return races.flatMap(race => 
-      race.results.map(res => ({
-        year: race.date.split('-')[0],
-        tier: race.tier,
-        rider: res.riderName,
-        track: race.venue,
+  const flatResults = useMemo<FlatResult[]>(() => {
+    return races.flatMap((race, rIdx) => 
+      race.results.map((res, resIdx) => ({
+        id: `${race.id}-${rIdx}-${resIdx}`,
         date: race.date,
+        className: race.className || '?',
+        track: race.venue,
+        type: race.discipline,
+        tier: race.tier,
         overall: res.position,
-        weblink: race.url
+        rider: res.riderName,
+        machine: res.machine || '',
+        moto1: res.moto1 || '',
+        moto2: res.moto2 || ''
       }))
     ).sort((a, b) => b.date.localeCompare(a.date));
   }, [races]);
@@ -272,6 +276,20 @@ const App: React.FC = () => {
           <DatabaseView 
             flatResults={flatResults} 
             allRaces={races}
+            analyzedRiders={filteredRiders}
+            currentSettings={{
+              selDiscipline,
+              selTier,
+              provisionalInit,
+              mulliganEnabled,
+              churnDecayEnabled,
+              standardK,
+              provisionalK,
+              provisionalRaces,
+              initialElo,
+              decayOffset,
+              mulliganCap
+            }}
             onImportCSV={handleCSVImport}
             onHydrate={handleHydrateFromLocalFile}
             onLog={addLog}

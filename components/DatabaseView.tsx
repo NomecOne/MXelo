@@ -1,27 +1,33 @@
 import React, { useState, useRef } from 'react';
-import { Race } from '../types';
+import { Race, Rider } from '../types';
 import { VirtualTable } from './VirtualTable';
-import { parseRacesCSV, exportRacesToJSON, exportRacesToCSV, downloadBlob } from '../services/dataService';
+import { parseRacesCSV, exportRacesToJSON, exportRacesToCSV, exportRidersToCSV, downloadBlob } from '../services/dataService';
 
-interface FlatResult {
-  year: string;
-  tier: string;
-  rider: string;
-  track: string;
+export interface FlatResult {
+  id: string;
   date: string;
+  className: string;
+  track: string;
+  type: string;
+  tier: string;
   overall: number;
-  weblink: string;
+  rider: string;
+  machine: string;
+  moto1: string;
+  moto2: string;
 }
 
 interface DatabaseViewProps {
   flatResults: FlatResult[];
   allRaces: Race[];
+  analyzedRiders: Rider[];
+  currentSettings: Record<string, any>;
   onImportCSV: (races: Race[]) => void;
   onHydrate: () => void;
   onLog: (msg: string) => void;
 }
 
-export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRaces, onImportCSV, onHydrate, onLog }) => {
+export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRaces, analyzedRiders, currentSettings, onImportCSV, onHydrate, onLog }) => {
   const [dbSubTab, setDbSubTab] = useState<'results' | 'transfer'>('transfer');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +74,13 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
     downloadBlob(csv, filename, 'text/csv');
   };
 
+  const handleExportMetrics = () => {
+    const csv = exportRidersToCSV(analyzedRiders, currentSettings);
+    const filename = `mxelo_rider_metrics_${new Date().toISOString().split('T')[0]}.csv`;
+    onLog(`Exporting metrics for ${analyzedRiders.length} riders to ${filename}...`);
+    downloadBlob(csv, filename, 'text/csv');
+  };
+
   return (
     <div className="flex-1 flex flex-col gap-6 min-h-0">
       <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 w-fit shrink-0">
@@ -79,25 +92,33 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
         {dbSubTab === 'results' && (
           <VirtualTable<FlatResult> 
             data={flatResults}
-            rowHeight={50}
+            rowHeight={45}
             header={
-              <tr className="w-full flex p-4 text-slate-500 uppercase text-[9px] font-black border-b border-slate-800">
-                <th className="w-16 text-left">#</th>
-                <th className="w-20">Date</th>
-                <th className="w-20 text-left">Tier</th>
-                <th className="flex-1 text-left">Rider</th>
-                <th className="flex-1 text-left">Track</th>
-                <th className="w-12 text-center">Pos</th>
+              <tr className="w-full flex px-4 py-3 text-slate-500 uppercase text-[9px] font-black border-b border-slate-800 gap-2">
+                <th className="w-[80px] shrink-0 text-left">Date</th>
+                <th className="w-[60px] shrink-0 text-left">Class</th>
+                <th className="flex-1 min-w-[100px] text-left truncate">Track</th>
+                <th className="w-[40px] shrink-0 text-left">Type</th>
+                <th className="w-[60px] shrink-0 text-left">Tier</th>
+                <th className="w-[40px] shrink-0 text-center">Pos</th>
+                <th className="w-[140px] shrink-0 text-left truncate">Rider</th>
+                <th className="w-[100px] shrink-0 text-left truncate">Machine</th>
+                <th className="w-[40px] shrink-0 text-center">M1</th>
+                <th className="w-[40px] shrink-0 text-center">M2</th>
               </tr>
             }
             renderRow={(res, i) => (
-              <tr key={i} className="w-full flex p-4 border-b border-slate-900/30 items-center hover:bg-slate-900/20 transition-colors">
-                <td className="w-16 text-slate-600 font-black text-[10px]">{i + 1}</td>
-                <td className="w-20 opacity-50 text-[10px]">{res.date}</td>
-                <td className="w-20 text-[10px] font-black text-slate-500 uppercase truncate">{res.tier}</td>
-                <td className="flex-1 font-bold truncate text-[11px] uppercase">{res.rider}</td>
-                <td className="flex-1 opacity-50 text-[10px] truncate uppercase">{res.track}</td>
-                <td className="w-12 text-center text-orange-500 font-black">{res.overall}</td>
+              <tr key={res.id} className="w-full flex px-4 py-0 border-b border-slate-900/30 items-center hover:bg-slate-900/20 transition-colors gap-2 h-full text-[10px]">
+                <td className="w-[80px] shrink-0 opacity-70 font-mono">{res.date}</td>
+                <td className="w-[60px] shrink-0 truncate font-bold text-slate-400">{res.className}</td>
+                <td className="flex-1 min-w-[100px] truncate opacity-70" title={res.track}>{res.track}</td>
+                <td className="w-[40px] shrink-0 opacity-50">{res.type}</td>
+                <td className="w-[60px] shrink-0 font-bold text-slate-500 truncate">{res.tier}</td>
+                <td className="w-[40px] shrink-0 text-center font-black text-orange-500">{res.overall}</td>
+                <td className="w-[140px] shrink-0 truncate font-bold text-slate-300" title={res.rider}>{res.rider}</td>
+                <td className="w-[100px] shrink-0 truncate opacity-50" title={res.machine}>{res.machine}</td>
+                <td className="w-[40px] shrink-0 text-center opacity-50">{res.moto1}</td>
+                <td className="w-[40px] shrink-0 text-center opacity-50">{res.moto2}</td>
               </tr>
             )}
           />
@@ -137,6 +158,12 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ flatResults, allRace
                 className="px-6 py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all border border-slate-700"
               >
                 Export Data JSON
+              </button>
+              <button 
+                onClick={handleExportMetrics}
+                className="px-6 py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] sm:text-[11px] font-black uppercase transition-all shadow-xl shadow-emerald-600/10 sm:col-span-2"
+              >
+                Export Metrics CSV
               </button>
             </div>
             

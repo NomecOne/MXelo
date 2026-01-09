@@ -1,4 +1,4 @@
-import { Race, RaceResult, ClassTier, Discipline } from '../types';
+import { Race, RaceResult, ClassTier, Discipline, Rider } from '../types';
 
 /**
  * Robust CSV line parser that handles quoted fields and multiple delimiters.
@@ -152,6 +152,75 @@ export const exportRacesToCSV = (races: Race[]): string => {
     }
   }
   return lines.join('\n');
+};
+
+/**
+ * Exports analyzed rider metrics to a CSV with settings configuration.
+ */
+export const exportRidersToCSV = (riders: Rider[], settings: Record<string, any>): string => {
+  const lines: string[] = [];
+  
+  // 1. Settings Header
+  lines.push("--- EXPORT CONFIGURATION ---");
+  lines.push(`Export Date,${new Date().toISOString()}`);
+  Object.entries(settings).forEach(([k, v]) => lines.push(`${k},${v}`));
+  lines.push(""); // Spacer
+
+  // 2. Data Header
+  const cols = [
+    "Rank", "Name", "Current ELO", "Peak ELO", "Peak Year", "Last Race",
+    "Total Races", "Win %", "Wins", "Top 3", "Top 5", "Top 10", "Elite Races", "Volatility",
+    "Premier Races", "Premier Wins", "Premier Top 3", "Premier Elite",
+    "Lites Races", "Lites Wins", "Lites Top 3", "Lites Elite",
+    "Open Races", "Open Wins", "Open Top 3", "Open Elite"
+  ];
+  lines.push(cols.join(","));
+
+  // 3. Data Rows
+  riders.forEach((r, i) => {
+    const totalRaces = (r.tierCounts?.PREMIER || 0) + (r.tierCounts?.LITES || 0) + (r.tierCounts?.OPEN || 0);
+    const totalWins = (r.tierWins?.PREMIER || 0) + (r.tierWins?.LITES || 0) + (r.tierWins?.OPEN || 0);
+    const winPerc = totalRaces > 0 ? (totalWins / totalRaces * 100).toFixed(1) : "0.0";
+    
+    const totalTop3 = (r.tierTop3s?.PREMIER || 0) + (r.tierTop3s?.LITES || 0) + (r.tierTop3s?.OPEN || 0);
+    const totalTop5 = (r.tierTop5s?.PREMIER || 0) + (r.tierTop5s?.LITES || 0) + (r.tierTop5s?.OPEN || 0);
+    const totalTop10 = (r.tierTop10s?.PREMIER || 0) + (r.tierTop10s?.LITES || 0) + (r.tierTop10s?.OPEN || 0);
+
+    const row = [
+      i + 1,
+      `"${r.name}"`,
+      r.elo,
+      r.peakElo,
+      r.peakYear || "",
+      r.lastRaceDate,
+      totalRaces,
+      `${winPerc}%`,
+      totalWins,
+      totalTop3,
+      totalTop5,
+      totalTop10,
+      r.eliteRaces || 0,
+      (r.volatility || 0).toFixed(2),
+      // Premier
+      r.tierCounts?.PREMIER || 0,
+      r.tierWins?.PREMIER || 0,
+      r.tierTop3s?.PREMIER || 0,
+      r.tierEliteRaces?.PREMIER || 0,
+      // Lites
+      r.tierCounts?.LITES || 0,
+      r.tierWins?.LITES || 0,
+      r.tierTop3s?.LITES || 0,
+      r.tierEliteRaces?.LITES || 0,
+      // Open
+      r.tierCounts?.OPEN || 0,
+      r.tierWins?.OPEN || 0,
+      r.tierTop3s?.OPEN || 0,
+      r.tierEliteRaces?.OPEN || 0,
+    ];
+    lines.push(row.join(","));
+  });
+
+  return lines.join("\n");
 };
 
 /**
